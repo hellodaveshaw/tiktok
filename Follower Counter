@@ -1,0 +1,19 @@
+curl -X POST \
+-H "Accept: application/json" \
+-H "X-Access-Token: OTRhNTZmNWU1MTE1NjVmYWJiNGI5ZTUyZTNlYjJlOWU0MTVhYTBhNDU2NzQ5YjlkN2YxNDFjMmRmMjUxOThkYQ==" \
+-H "Cache-Control: no-cache" \
+-d '{
+    "frames": [
+        {
+            "text": "51",
+            "icon": 44201,
+            "index": 0
+        },
+        {
+            "text": "hellodaveshaw",
+            "icon": null,
+            "index": 1
+        }
+    ]
+}' \
+https://192.168.0.46:4343/api/v1/dev/widget/update/com.lametric.68c9ffb7d51909c7fbb9419db74cb64f/2
