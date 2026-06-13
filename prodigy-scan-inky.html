@@ -173,12 +173,18 @@
     border:1px solid var(--y);border-radius:50%;
     background:radial-gradient(rgba(255,214,10,.4),rgba(255,214,10,0) 70%);}
 
-  /* FACE PLATE — sits on the front of the head, rotates with it.
-     backface-visibility:hidden makes it disappear when the head turns away. */
+  /* SVG meridians (head silhouette revolved around Y) */
+  svg.mer{position:absolute;top:0;left:0;overflow:visible;
+    filter:drop-shadow(0 0 4px rgba(255,214,10,.45));}
+  svg.mer path{fill:none;stroke:var(--y);stroke-width:1.2;
+    vector-effect:non-scaling-stroke;opacity:.9;}
+
+  /* FACE PLATE — mounted on the front of the head at brow/eye level,
+     rotates with it. backface-visibility:hidden hides it when turned away. */
   .face-plate{
     position:absolute;top:0;left:0;
-    width:140px;height:170px;margin:-85px 0 0 -70px;
-    transform:translateZ(112px);
+    width:120px;height:140px;margin:-70px 0 0 -60px;
+    transform:translateY(-18px) translateZ(64px);
     backface-visibility:hidden;
     display:flex;align-items:center;justify-content:center;
   }
@@ -361,15 +367,32 @@
 </div>
 
 <script>
-  /* ---------- build the wireframe sphere ---------- */
+  /* ---------- build the wireframe HEAD (not a sphere) ----------
+     Strategy: take a 2D head silhouette and revolve it around the Y axis.
+     Latitudes: horizontal rings whose radius matches the head profile at that height.
+     Meridians: copies of the silhouette SVG, each rotated to a different Y angle. */
   const head = document.getElementById("head");
-  const R = 110;
 
-  // latitudes (horizontal rings)
-  [-72,-50,-28,-8,12,32,55,75].forEach(deg => {
-    const rad = deg * Math.PI / 180;
-    const y = R * Math.sin(rad);
-    const r = R * Math.cos(rad);
+  // Head profile sampled top→bottom: [y, radius from spine axis]
+  // Crown narrow, brow widest, taper to chin, then small neck stub.
+  const profile = [
+    [-118,  0],   // crown apex
+    [-100, 40],   // upper skull
+    [ -78, 60],   // top of cranium
+    [ -55, 66],   // brow line (widest)
+    [ -32, 66],   // cheekbone
+    [ -10, 63],   // cheek
+    [  12, 56],   // mid-jaw
+    [  32, 46],   // jaw
+    [  50, 34],   // lower jaw
+    [  70, 22],   // chin / collar
+    [  92, 16],   // neck
+    [ 108, 17],   // neck base
+  ];
+
+  // Latitude rings
+  profile.forEach(([y, r]) => {
+    if (r < 6) return;
     const d = document.createElement("div");
     d.className = "ring lat";
     d.style.width = (2*r) + "px";
@@ -380,20 +403,45 @@
     head.insertBefore(d, head.firstChild);
   });
 
-  // meridians (vertical great circles) — 12 around Y axis
-  for (let a = 0; a < 180; a += 15) {
-    const d = document.createElement("div");
-    d.className = "ring mer";
-    d.style.width = (2*R) + "px";
-    d.style.height = (2*R) + "px";
-    d.style.marginLeft = (-R) + "px";
-    d.style.marginTop  = (-R) + "px";
-    d.style.transform = `rotateY(${a}deg)`;
-    head.insertBefore(d, head.firstChild);
+  // Silhouette path (full both-sides head profile, used as meridian curves)
+  const SILHOUETTE_D = `
+    M 0 -118
+    C 40 -118, 62 -100, 64 -78
+    C 67 -55, 67 -32, 64 -10
+    C 60 12, 50 32, 36 50
+    C 26 64, 20 78, 16 92
+    L 17 108
+    L -17 108
+    L -16 92
+    C -20 78, -26 64, -36 50
+    C -50 32, -60 12, -64 -10
+    C -67 -32, -67 -55, -64 -78
+    C -62 -100, -40 -118, 0 -118
+    Z
+  `;
+
+  // Meridians: copies of the silhouette, rotated around Y axis.
+  // Silhouette is symmetric so 8 copies across 180° give full coverage.
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  const N_MER = 8;
+  for (let i = 0; i < N_MER; i++) {
+    const angle = (180 / N_MER) * i;
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.classList.add("mer");
+    svg.setAttribute("viewBox", "-80 -130 160 250");
+    svg.style.width = "160px";
+    svg.style.height = "250px";
+    svg.style.marginLeft = "-80px";
+    svg.style.marginTop  = "-125px";
+    svg.style.transform = `rotateY(${angle}deg)`;
+    const path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("d", SILHOUETTE_D);
+    svg.appendChild(path);
+    head.insertBefore(svg, head.firstChild);
   }
 
-  // poles
-  ["translateY(-110px)","translateY(110px)"].forEach(t => {
+  // Crown + neck "poles" — small marker discs at top and bottom of the head axis
+  ["translateY(-118px)","translateY(108px)"].forEach(t => {
     const p = document.createElement("div");
     p.className = "pole";
     p.style.transform = t;
