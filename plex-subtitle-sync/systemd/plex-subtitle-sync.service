@@ -1,0 +1,14 @@
+[Unit]
+Description=Plex subtitle sync & fix
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Adjust WorkingDirectory/EnvironmentFile to where you installed the project.
+WorkingDirectory=/opt/plex-subtitle-sync
+EnvironmentFile=/opt/plex-subtitle-sync/config.env
+ExecStart=/opt/plex-subtitle-sync/.venv/bin/python /opt/plex-subtitle-sync/sync_subtitles.py
+# State dir used by STATE_FILE default below.
+StateDirectory=plex-subtitle-sync
+Nice=10

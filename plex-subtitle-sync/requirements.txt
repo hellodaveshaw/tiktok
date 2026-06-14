@@ -1,0 +1,4 @@
+plexapi>=4.15
+ffsubsync>=0.4.25
+subliminal>=2.1
+babelfish>=0.6
