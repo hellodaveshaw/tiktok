@@ -86,6 +86,7 @@ def load_state(path: Path) -> dict:
 
 
 def save_state(path: Path, state: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(state, indent=2, sort_keys=True))
     tmp.replace(path)
@@ -165,17 +166,36 @@ def download_subtitle(video: Path, language: str, cfg: dict) -> Path | None:
     return sub
 
 
+def find_ffsubsync() -> str | None:
+    """Locate the ffsubsync executable.
+
+    Checks PATH first, then the directory of the running interpreter, so it is
+    found even when installed only inside the project's virtualenv (the
+    service/cron commands invoke .venv/bin/python without activating the venv).
+    """
+    for name in ("ffsubsync", "ffs"):
+        found = shutil.which(name)
+        if found:
+            return found
+        candidate = Path(sys.executable).parent / name
+        if candidate.exists():
+            return str(candidate)
+    return None
+
+
 def sync_subtitle(video: Path, subtitle: Path, cfg: dict) -> bool:
     """Re-time the subtitle against the video's audio using ffsubsync.
 
     Returns True if a synced subtitle was written.
     """
-    ffs = shutil.which("ffsubsync") or shutil.which("ffs")
+    ffs = find_ffsubsync()
     if not ffs:
-        LOG.error("ffsubsync not found on PATH; cannot fix subtitle timing.")
+        LOG.error("ffsubsync not found on PATH or in the venv; cannot fix subtitle timing.")
         return False
 
-    synced_tmp = subtitle.with_suffix(subtitle.suffix + ".synced")
+    # Keep a real subtitle extension last so ffsubsync can infer the output
+    # format (e.g. episode.en.srt -> episode.en.synced.srt).
+    synced_tmp = subtitle.with_name(f"{subtitle.stem}.synced{subtitle.suffix}")
     cmd = [ffs, str(video), "-i", str(subtitle), "-o", str(synced_tmp)]
 
     if cfg["dry_run"]:
