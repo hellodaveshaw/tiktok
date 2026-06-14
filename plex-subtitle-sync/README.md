@@ -5,7 +5,7 @@ actual episode audio** for selected Plex shows, then refreshes Plex so the
 corrected subtitles show up. Designed to run on a schedule and forget about it.
 
 By default it targets three shows: **Matlock**, **High Potential**, and
-**Saturday Night Live** — change the `SHOWS` list in `config.env` for others.
+**Saturday Night Live (UK)** — change the `SHOWS` list in `config.env` for others.
 
 ## How it works
 

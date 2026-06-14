@@ -58,7 +58,7 @@ def load_config() -> dict:
         LOG.error("PLEX_BASEURL and PLEX_TOKEN must be set. See config.example.env.")
         sys.exit(2)
 
-    shows_raw = env("SHOWS", "Matlock,High Potential,Saturday Night Live")
+    shows_raw = env("SHOWS", "Matlock,High Potential,Saturday Night Live (UK)")
     shows = [s.strip() for s in shows_raw.split(",") if s.strip()]
 
     return {
