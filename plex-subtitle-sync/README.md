@@ -31,7 +31,9 @@ scheduled job is cheap.
 git clone https://github.com/hellodaveshaw/tiktok.git
 cd tiktok/plex-subtitle-sync
 sudo ./install.sh                 # or: PREFIX=~/plex-subtitle-sync ./install.sh
-nano /opt/plex-subtitle-sync/config.env   # set PLEX_TOKEN (and shows/language)
+# Then edit config.env in your install prefix (default /opt/plex-subtitle-sync;
+# whatever you passed as PREFIX above) and set PLEX_TOKEN (and shows/language):
+nano /opt/plex-subtitle-sync/config.env
 ```
 
 `install.sh` creates a virtualenv, installs the Python deps, and — if `systemd`

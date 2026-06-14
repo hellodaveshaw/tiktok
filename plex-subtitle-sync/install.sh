@@ -24,6 +24,8 @@ if ! command -v ffmpeg >/dev/null 2>&1; then
   echo "     Debian/Ubuntu: sudo apt install ffmpeg"
   echo "     Synology:      install 'ffmpeg' via Package Center / Entware"
   echo "     macOS:         brew install ffmpeg"
+  echo "Aborting: ffmpeg is required. Re-run install.sh once it is installed."
+  exit 1
 fi
 
 echo ">> Creating virtualenv and installing Python deps"

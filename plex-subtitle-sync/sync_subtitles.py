@@ -47,11 +47,13 @@ SUBTITLE_EXTS = (".srt", ".ass", ".ssa", ".vtt")
 # Config
 # --------------------------------------------------------------------------- #
 def env(name: str, default: str | None = None) -> str | None:
+    """Read an environment variable, stripping surrounding whitespace."""
     val = os.environ.get(name, default)
     return val.strip() if isinstance(val, str) else val
 
 
 def load_config() -> dict:
+    """Build the runtime config from environment variables, exiting if required ones are missing."""
     baseurl = env("PLEX_BASEURL")
     token = env("PLEX_TOKEN")
     if not baseurl or not token:
@@ -79,6 +81,7 @@ def load_config() -> dict:
 # State (so we don't re-sync the same file every run)
 # --------------------------------------------------------------------------- #
 def load_state(path: Path) -> dict:
+    """Load the processed-files state, returning an empty dict if absent or corrupt."""
     try:
         return json.loads(path.read_text())
     except (FileNotFoundError, json.JSONDecodeError):
@@ -86,10 +89,15 @@ def load_state(path: Path) -> dict:
 
 
 def save_state(path: Path, state: dict) -> None:
+    """Atomically persist the processed-files state, creating the dir if needed."""
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(state, indent=2, sort_keys=True))
-    tmp.replace(path)
+    try:
+        tmp.write_text(json.dumps(state, indent=2, sort_keys=True))
+        tmp.replace(path)
+    except OSError as exc:
+        LOG.error("Failed to save state file %s: %s", path, exc)
+        tmp.unlink(missing_ok=True)
 
 
 def file_signature(video: Path) -> str:
@@ -203,7 +211,12 @@ def sync_subtitle(video: Path, subtitle: Path, cfg: dict) -> bool:
         return False
 
     LOG.info("Syncing %s", subtitle.name)
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
+    except subprocess.TimeoutExpired:
+        LOG.error("ffsubsync timed out for %s; skipping.", subtitle.name)
+        synced_tmp.unlink(missing_ok=True)
+        return False
     if result.returncode != 0 or not synced_tmp.exists():
         LOG.error("ffsubsync failed for %s: %s", subtitle.name, result.stderr.strip()[-500:])
         synced_tmp.unlink(missing_ok=True)
@@ -222,6 +235,7 @@ def sync_subtitle(video: Path, subtitle: Path, cfg: dict) -> bool:
 # Main
 # --------------------------------------------------------------------------- #
 def iter_episode_files(show) -> list[Path]:
+    """Return the on-disk file paths for every episode part of a show."""
     paths: list[Path] = []
     for episode in show.episodes():
         for media in episode.media:
@@ -232,6 +246,7 @@ def iter_episode_files(show) -> list[Path]:
 
 
 def main() -> int:
+    """Connect to Plex and sync/fix subtitles for each configured show."""
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(message)s",
@@ -246,7 +261,11 @@ def main() -> int:
         return 2
 
     LOG.info("Connecting to Plex at %s", cfg["baseurl"])
-    plex = PlexServer(cfg["baseurl"], cfg["token"])
+    try:
+        plex = PlexServer(cfg["baseurl"], cfg["token"])
+    except Exception as exc:  # connection/auth errors
+        LOG.error("Failed to connect to Plex at %s: %s", cfg["baseurl"], exc)
+        return 2
 
     try:
         section = plex.library.section(cfg["section"])
@@ -298,7 +317,10 @@ def main() -> int:
     for show in {s.ratingKey: s for s in touched_shows}.values():
         if not cfg["dry_run"]:
             LOG.info("Refreshing Plex metadata for %s", show.title)
-            show.refresh()
+            try:
+                show.refresh()
+            except Exception as exc:
+                LOG.warning("Refresh failed for %s: %s", show.title, exc)
 
     LOG.info(
         "Done. processed=%d synced=%d skipped=%d missing/unfound=%d",
